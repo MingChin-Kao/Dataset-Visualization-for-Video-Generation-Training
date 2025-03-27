@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Clip Browser</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .independent-scroll {
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            height: 100vh;
+            overflow-y: auto;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 33.333%;
+            padding: 1rem;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .content-area {
+            margin-left: 33.333%;
+            width: 66.666%;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body class="independent-scroll">
+    <div class="sidebar">
+        <div class="mb-4">
+            <input 
+                type="text" 
+                id="search-input" 
+                placeholder="Search clips..." 
+                class="w-full p-2 border rounded"
+            >
+            
+            <!-- 美学分数输入区域 -->
+            <div class="flex items-center mt-2">
+                <label class="mr-2">Min AES:</label>
+                <input 
+                    type="number" 
+                    id="min-aes-input" 
+                    placeholder="Min Aesthetic Score" 
+                    class="flex-grow p-2 border rounded"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                >
+                <button 
+                    id="apply-aes-filter" 
+                    class="ml-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                    Apply
+                </button>
+            </div>
+            
+            <!-- 实时显示当前美学分数范围 -->
+            <div id="aes-range-display" class="mt-2 text-sm text-gray-600">
+                Current AES Range: All
+            </div>
+        </div>
+        
+        <div id="video-list" class="overflow-y-auto" style="height: calc(100vh - 160px);">
+            {% for video in videos %}
+            <div 
+                class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b"
+                data-path="{{ video.web_path }}"
+                data-id="{{ video.id }}"
+            >
+                <p class="font-bold">{{ video.id }}</p>
+                <p class="text-sm text-gray-600">Aesthetic Score: {{ video.aes }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="content-area">
+        <div id="no-selection" class="text-center text-gray-500">
+            Select a video to view details
+        </div>
+        
+        <div id="selected-video-info" class="hidden">
+            <video id="video-player" controls class="w-full mb-4">
+                <source id="video-source" src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+
+            <div id="video-metadata">
+                <h2 id="video-id" class="text-2xl font-bold mb-2"></h2>
+                <p><strong>Resolution:</strong> <span id="video-resolution"></span></p>
+                <p><strong>FPS:</strong> <span id="video-fps"></span></p>
+                <p><strong>Aesthetic Score:</strong> <span id="video-aes"></span></p>
+                <p><strong>Caption:</strong> <span id="video-caption" class="break-words"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search-input');
+            const minAesInput = document.getElementById('min-aes-input');
+            const applyAesFilterBtn = document.getElementById('apply-aes-filter');
+            const aesRangeDisplay = document.getElementById('aes-range-display');
+            const videoList = document.getElementById('video-list');
+            const contentArea = document.querySelector('.content-area');
+            const noSelection = document.getElementById('no-selection');
+            const selectedVideoInfo = document.getElementById('selected-video-info');
+            const videoPlayer = document.getElementById('video-player');
+            const videoSource = document.getElementById('video-source');
+
+            let currentMinAes = null;
+
+            // Video selection handler
+            videoList.addEventListener('click', function(e) {
+                const videoItem = e.target.closest('.video-item');
+                if (videoItem) {
+                    const videoPath = videoItem.dataset.path;
+                    const videoId = videoItem.dataset.id;
+
+                    // Find the full video details
+                    const video = {{ videos | tojson }}.find(v => v.id === videoId);
+
+                    // Show video details
+                    noSelection.classList.add('hidden');
+                    selectedVideoInfo.classList.remove('hidden');
+
+                    // Scroll content area to top
+                    contentArea.scrollTop = 0;
+
+                    // Update video player
+                    videoPlayer.poster = '';
+                    videoSource.src = `/video/${videoId}`;
+                    videoPlayer.load();
+
+                    // Update metadata
+                    document.getElementById('video-id').textContent = video.id;
+                    document.getElementById('video-resolution').textContent = `${video.width}x${video.height}`;
+                    document.getElementById('video-fps').textContent = video.fps;
+                    document.getElementById('video-aes').textContent = video.aes;
+                    document.getElementById('video-caption').textContent = video.text;
+                }
+            });
+
+            // Filtering handler
+            function filterVideos() {
+                const query = searchInput.value;
+                const minAes = currentMinAes;
+
+                fetch(`/filter_videos?query=${query}&min_aes=${minAes || ''}`)
+                    .then(response => response.json())
+                    .then(videos => {
+                        videoList.innerHTML = videos.map(video => `
+                            <div 
+                                class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b"
+                                data-path="${video.web_path}"
+                                data-id="${video.id}"
+                            >
+                                <p class="font-bold">${video.id}</p>
+                                <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
+                            </div>
+                        `).join('');
+
+                        // Update range display
+                        if (minAes) {
+                            aesRangeDisplay.textContent = `Current AES Range: ≥ ${minAes}`;
+                        } else {
+                            aesRangeDisplay.textContent = 'Current AES Range: All';
+                        }
+                    });
+            }
+
+            // Apply AES filter button
+            applyAesFilterBtn.addEventListener('click', function() {
+                currentMinAes = minAesInput.value ? parseFloat(minAesInput.value) : null;
+                filterVideos();
+            });
+
+            // Search input listener
+            searchInput.addEventListener('input', filterVideos);
+        });
+    </script>
+</body>
+</html>
