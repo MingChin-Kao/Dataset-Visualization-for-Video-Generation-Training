@@ -62,7 +62,7 @@
         placeholder="Search clips..."
         class="w-full p-2 border rounded mb-2"
       />
-      <div class="flex items-center mt-2">
+      <!-- <div class="flex items-center mt-2">
         <label class="mr-2">Min AES:</label>
         <input
           type="number"
@@ -79,7 +79,7 @@
         >
           Apply
         </button>
-      </div>
+      </div> -->
       <div id="aes-range-display" class="mt-2 text-sm text-gray-600">
         Current AES Range: All
       </div>
@@ -99,6 +99,7 @@
             Aesthetic Score: {{ video.aes }}
           </p>
           <p class="text-sm text-gray-500">Source Video: {{ video.source_video }}</p>
+          <p class="text-sm text-gray-500">Is Use: {{ "Yes" if video.is_use else "No" }}</p>
         </div>
         {% endfor %}
       </div>
@@ -132,9 +133,10 @@
         </button>
       </div>
 
-      <div id="video-metadata">
+      <div id="video-metadata" class="mt-4">
         <h2 id="video-id" class="text-2xl font-bold mb-2"></h2>
         <p><strong>Resolution:</strong> <span id="video-resolution"></span></p>
+        <p><strong>Is Use:</strong> <span id="video-is-use"></span></p>
         <p><strong>FPS:</strong> <span id="video-fps"></span></p>
         <p><strong>Aesthetic Score:</strong> <span id="video-aes"></span></p>
         <p><strong>Source Video:</strong> <span id="video-source-video"></span></p>
@@ -146,8 +148,14 @@
           style="resize: vertical"
         ></textarea>
         <button
+            id="toggle-is-use"
+            class="mt-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+        Toggle Is Use
+        </button>
+        <button
           id="save-caption"
-          class="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          class="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 float-right"
         >
           Save
         </button>
@@ -242,6 +250,7 @@
           document.getElementById("video-aes").textContent = video.aes;
           document.getElementById("video-source-video").textContent = video.source_video; // 更新來源影片名稱
           document.getElementById("video-caption").value = video.text;
+          document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
         }
       });
 
@@ -260,6 +269,7 @@
                   <p class="font-bold">${video.id}</p>
                   <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
                   <p class="text-sm text-gray-500">Source Video: ${video.source_video}</p>
+                  <p class="text-sm text-gray-500">Is Use: ${video.is_use ? "Yes" : "No"}</p>
               </div>`
               )
               .join("");
@@ -272,12 +282,12 @@
           });
       }
 
-      applyAesFilterBtn.addEventListener("click", function () {
-        currentMinAes = minAesInput.value
-          ? parseFloat(minAesInput.value)
-          : null;
-        filterVideos();
-      });
+    //   applyAesFilterBtn.addEventListener("click", function () {
+    //     currentMinAes = minAesInput.value
+    //       ? parseFloat(minAesInput.value)
+    //       : null;
+    //     filterVideos();
+    //   });
 
       searchInput.addEventListener("input", filterVideos);
 
@@ -317,6 +327,7 @@
         document.getElementById("video-aes").textContent = video.aes;
         document.getElementById("video-source-video").textContent = video.source_video;
         document.getElementById("video-caption").value = video.text;
+        document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
 
         const videoPlayer = document.getElementById("video-player");
         const videoSource = document.getElementById("video-source");
@@ -361,6 +372,43 @@
           currentVideoIndex = videos.findIndex((v) => v.id === videoId);
         }
       });
+
+      const toggleIsUseBtn = document.getElementById("toggle-is-use");
+
+      toggleIsUseBtn.addEventListener("click", function () {
+        const videoId = document.getElementById("video-id").textContent;
+        const currentIsUse = document.getElementById("video-is-use").textContent === "Yes";
+
+        fetch(`/update_is_use`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: videoId, is_use: !currentIsUse }),
+        })
+          .then((response) => {
+            if (response.ok) {
+              // 更新右側詳細資訊
+              document.getElementById("video-is-use").textContent = !currentIsUse ? "Yes" : "No";
+
+              // 更新 Sidebar 中的對應項目
+              const sidebarItem = document.querySelector(`.video-item[data-id="${videoId}"]`);
+              if (sidebarItem) {
+                const isUseElement = sidebarItem.querySelector(".text-gray-500:last-child");
+                if (isUseElement) {
+                  isUseElement.textContent = `Is Use: ${!currentIsUse ? "Yes" : "No"}`;
+                }
+              }
+
+              showNotification("is_use updated successfully!");
+            } else {
+              showNotification("Failed to update is_use.", false);
+            }
+          })
+          .catch(() => {
+            showNotification("An error occurred while updating is_use.", false);
+          });
+      });
     });
 
     const fileSelector = document.getElementById("file-selector");
@@ -378,6 +426,33 @@
             option.textContent = file;
             fileSelector.appendChild(option);
           });
+
+          // 如果有檔案，預設選擇第一個檔案並載入
+          if (files.length > 0) {
+            fileSelector.value = files[0]; // 預設選擇第一個檔案
+            loadFileData(files[0]); // 載入第一個檔案的資料
+          }
+        });
+    }
+
+    // 載入檔案資料
+    function loadFileData(selectedFile) {
+      fetch(`/load_file?filename=${encodeURIComponent(selectedFile)}`)
+        .then((response) => response.json())
+        .then((videos) => {
+          // 更新影片列表
+          videoList.innerHTML = videos
+            .map(
+              (video) => `
+              <div class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b"
+                   data-path="${video.web_path}" data-id="${video.id}">
+                  <p class="font-bold">${video.id}</p>
+                  <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
+                  <p class="text-sm text-gray-500">Source Video: ${video.source_video}</p>
+                  <p class="text-sm text-gray-500">Is Use: ${video.is_use ? "Yes" : "No"}</p>
+              </div>`
+            )
+            .join("");
         });
     }
 
@@ -385,22 +460,7 @@
     fileSelector.addEventListener("change", function () {
       const selectedFile = fileSelector.value;
       if (selectedFile) {
-        fetch(`/load_file?filename=${encodeURIComponent(selectedFile)}`)
-          .then((response) => response.json())
-          .then((videos) => {
-            // 更新影片列表
-            videoList.innerHTML = videos
-              .map(
-                (video) => `
-                <div class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b"
-                     data-path="${video.web_path}" data-id="${video.id}">
-                    <p class="font-bold">${video.id}</p>
-                    <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
-                    <p class="text-sm text-gray-500">Source Video: ${video.source_video}</p>
-                </div>`
-              )
-              .join("");
-          });
+        loadFileData(selectedFile);
       } else {
         videoList.innerHTML = ""; // 清空影片列表
       }

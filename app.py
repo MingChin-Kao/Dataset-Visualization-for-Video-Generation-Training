@@ -84,6 +84,26 @@ def update_caption():
     else:
         return "Video ID not found", 404
 
+@app.route('/update_is_use', methods=['POST'])
+def update_is_use():
+    data = request.get_json()
+    video_id = data.get('id')
+    is_use = data.get('is_use')
+
+    if video_id is None or is_use is None:
+        return "Invalid data", 400
+
+    # Load the CSV file
+    df = load_video_data()
+
+    # Update the is_use value for the specified video ID
+    if video_id in df['id'].values:
+        df.loc[df['id'] == video_id, 'is_use'] = is_use
+        df.to_csv(os.path.join(DATA_DIR, current_csv_file), index=False)
+        return "is_use updated successfully", 200
+    else:
+        return "Video ID not found", 404
+
 # 取得檔案清單
 @app.route('/get_files', methods=['GET'])
 def get_files():
