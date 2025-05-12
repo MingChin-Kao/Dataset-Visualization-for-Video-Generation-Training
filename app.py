@@ -14,9 +14,9 @@ def load_video_data():
     # 動態載入當前選擇的 CSV 檔案
     filepath = os.path.join(DATA_DIR, current_csv_file)
     df = pd.read_csv(filepath)
-    
-    # Convert paths to be web-friendly
-    df['web_path'] = df['path'].apply(lambda x: x.replace('/home/mingchin/video_generation/data_pipeline/clips/', ''))
+
+    base_clip_path = '/app/data'
+    df['web_path'] = df['path'].apply(lambda x: x.replace(base_clip_path + '/', ''))
     
     # Extract source video name from the 'id' column
     df['source_video'] = df['id'].apply(lambda x: x.split('_scene')[0])
@@ -50,19 +50,16 @@ def filter_videos():
 
 @app.route('/video/<path:filename>')
 def serve_video(filename):
-    videos = load_video_data().to_dict('records')
-    video = next((v for v in videos if v['id'] == filename), None)
-    
-    if video:
-        print(f"Serving video: {video['path']}")  # 除錯訊息
-        if os.path.exists(video['path']):
-            return send_file(video['path'], mimetype='video/mp4')
-        else:
-            print(f"File not found: {video['path']}")  # 檔案不存在
+    # 使用容器內的 /app/data 作為基礎路徑
+    print("hihi")
+    video_path = os.path.join('/app/clips', f"{filename}.mp4")
+    print(video_path)  # 除錯訊息
+    if os.path.exists(video_path):
+        print(f"Serving video: {video_path}")  # 除錯訊息
+        return send_file(video_path, mimetype='video/mp4')
     else:
-        print(f"Video ID not found: {filename}")  # 找不到影片 ID
-    
-    return "Video not found", 404
+        print(f"File not found: {video_path}")  # 檔案不存在
+        return "Video not found", 404
 
 @app.route('/update_caption', methods=['POST'])
 def update_caption():

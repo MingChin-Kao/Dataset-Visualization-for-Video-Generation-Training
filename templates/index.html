@@ -411,6 +411,30 @@
       });
     });
 
+    document.addEventListener("DOMContentLoaded", function () {
+      const searchInput = document.getElementById("search-input");
+      const videoList = document.getElementById("video-list");
+
+      // 篩選影片的函數
+      function filterVideos() {
+        const query = searchInput.value.toLowerCase();
+
+        // 遍歷影片列表，根據搜尋條件顯示或隱藏影片
+        document.querySelectorAll(".video-item").forEach((item) => {
+          const videoId = item.dataset.id.toLowerCase();
+          const sourceVideo = item.querySelector(".text-gray-500").textContent.toLowerCase();
+          if (videoId.includes(query) || sourceVideo.includes(query)) {
+            item.style.display = ""; // 顯示符合條件的影片
+          } else {
+            item.style.display = "none"; // 隱藏不符合條件的影片
+          }
+        });
+      }
+
+      // 綁定輸入事件到搜尋框
+      searchInput.addEventListener("input", filterVideos);
+    });
+
     const fileSelector = document.getElementById("file-selector");
     const videoList = document.getElementById("video-list");
 
