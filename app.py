@@ -26,10 +26,29 @@ def load_video_data():
     
     return df
 
+def get_video_by_id(video_id):
+    global video_df
+    row = video_df[video_df["id"] == video_id]
+    if not row.empty:
+        return row.iloc[0].to_dict()
+    return {}
+
 @app.route('/')
 def index():
-    videos = load_video_data().to_dict('records')
-    return render_template('index.html', videos=videos)
+    global video_df
+    video_df = load_video_data()  # 初始化一次
+    videos = video_df.to_dict('records')
+    return render_template('index.html', videos=videos, current_csv_file=current_csv_file)
+
+@app.route('/get_video/<video_id>')
+def get_video(video_id):
+    global video_df
+    if video_df is None:
+        video_df = load_video_data()
+    row = video_df[video_df["id"] == video_id]
+    if not row.empty:
+        return jsonify(row.iloc[0].to_dict())
+    return jsonify({})
 
 @app.route('/filter_videos')
 def filter_videos():
@@ -51,9 +70,7 @@ def filter_videos():
 @app.route('/video/<path:filename>')
 def serve_video(filename):
     # 使用容器內的 /app/data 作為基礎路徑
-    print("hihi")
     video_path = os.path.join('/app/clips', f"{filename}.mp4")
-    print(video_path)  # 除錯訊息
     if os.path.exists(video_path):
         print(f"Serving video: {video_path}")  # 除錯訊息
         return send_file(video_path, mimetype='video/mp4')
@@ -63,6 +80,7 @@ def serve_video(filename):
 
 @app.route('/update_caption', methods=['POST'])
 def update_caption():
+    global current_csv_file, video_df
     data = request.get_json()
     video_id = data.get('id')
     updated_text = data.get('text')
@@ -70,19 +88,26 @@ def update_caption():
     if not video_id or updated_text is None:
         return "Invalid data", 400
 
-    # Load the CSV file
-    df = load_video_data()
+    # 載入 CSV 檔案
+    filepath = os.path.join(DATA_DIR, current_csv_file)
+    df = pd.read_csv(filepath)
 
-    # Update the text for the specified video ID
+    # 更新指定影片的 Caption
     if video_id in df['id'].values:
         df.loc[df['id'] == video_id, 'text'] = updated_text
-        df.to_csv('data/clips_filter.csv', index=False)
+        df.to_csv(filepath, index=False)
+
+        # ✅ 強制更新記憶中的資料
+        video_df = load_video_data()
+
         return "Caption updated successfully", 200
     else:
         return "Video ID not found", 404
 
+
 @app.route('/update_is_use', methods=['POST'])
 def update_is_use():
+    global video_df
     data = request.get_json()
     video_id = data.get('id')
     is_use = data.get('is_use')
@@ -93,13 +118,17 @@ def update_is_use():
     # Load the CSV file
     df = load_video_data()
 
-    # Update the is_use value for the specified video ID
     if video_id in df['id'].values:
         df.loc[df['id'] == video_id, 'is_use'] = is_use
         df.to_csv(os.path.join(DATA_DIR, current_csv_file), index=False)
+
+        # ✅ 更新全域快取
+        video_df = df
+
         return "is_use updated successfully", 200
     else:
         return "Video ID not found", 404
+
 
 # 取得檔案清單
 @app.route('/get_files', methods=['GET'])

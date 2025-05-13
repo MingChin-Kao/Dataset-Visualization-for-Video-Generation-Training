@@ -304,12 +304,17 @@
         })
           .then((response) => {
             if (response.ok) {
+              // 顯示成功通知
               showNotification("Caption updated successfully!");
+
+              // 更新右側 Caption textarea 的值
+              document.getElementById("video-caption").value = updatedText;
             } else {
               showNotification("Failed to update caption.", false);
             }
           })
-          .catch(() => {
+          .catch((error) => {
+            console.error("Fetch error:", error);
             showNotification("An error occurred while updating caption.", false);
           });
       });
@@ -368,10 +373,37 @@
         const videoItem = e.target.closest(".video-item");
         if (videoItem) {
           const videoId = videoItem.dataset.id;
-          const videos = {{ videos | tojson }};
-          currentVideoIndex = videos.findIndex((v) => v.id === videoId);
+
+          // 移除所有 .selected 樣式
+          document.querySelectorAll(".video-item").forEach((item) => {
+            item.classList.remove("selected");
+          });
+          videoItem.classList.add("selected");
+
+          // 動態取得影片資料
+          fetch(`/get_video/${videoId}`)
+            .then((response) => response.json())
+            .then((video) => {
+              // 顯示影片資訊區塊
+              document.getElementById("no-selection").classList.add("hidden");
+              document.getElementById("selected-video-info").classList.remove("hidden");
+              contentArea.scrollTop = 0;
+
+              document.getElementById("video-id").textContent = video.id;
+              document.getElementById("video-resolution").textContent = `${video.width}x${video.height}`;
+              document.getElementById("video-fps").textContent = video.fps;
+              document.getElementById("video-aes").textContent = video.aes;
+              document.getElementById("video-source-video").textContent = video.source_video;
+              document.getElementById("video-caption").value = video.text;
+              document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
+
+              const videoSource = document.getElementById("video-source");
+              videoSource.src = `/video/${video.id}`;
+              document.getElementById("video-player").load();
+            });
         }
       });
+
 
       const toggleIsUseBtn = document.getElementById("toggle-is-use");
 
