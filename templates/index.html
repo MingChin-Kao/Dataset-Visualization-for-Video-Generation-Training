@@ -352,8 +352,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // 鍵盤快捷鍵
   document.addEventListener("keydown", function (event) {
-    if (event.ctrlKey && event.shiftKey && event.key === "S") {
-      event.preventDefault();
+    if (event.altKey && event.key === "s") {
+      // event.preventDefault();
       saveCaptionBtn.click();
     } else if (event.altKey && event.key === ",") {
       prevVideoBtn.click();
