@@ -45,6 +45,26 @@
       background-color: #d1fae5; /* 淺綠色背景 */
       border-color: #10b981; /* 綠色邊框 */
     }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1fr 3fr; /* 第一欄占 1，第二欄占 3 */
+      gap: 1rem; /* 欄間距 */
+    }
+
+    .grid-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .grid-item-right button {
+      align-self: flex-end;
+    }
+
+    .grid-item-left {
+      align-self: flex-start;
+    }
+    
   </style>
 </head>
 <body class="independent-scroll">
@@ -113,7 +133,7 @@
     </div>
 
     <div id="selected-video-info" class="hidden">
-      <video id="video-player" controls class="w-full mb-4">
+      <video id="video-player" controls class="w-full h-auto mb-4">
         <source id="video-source" src="" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
@@ -133,7 +153,7 @@
         </button>
       </div>
 
-      <div id="video-metadata" class="mt-4">
+      <!-- <div id="video-metadata" class="mt-4">
         <h2 id="video-id" class="text-2xl font-bold mb-2"></h2>
         <p><strong>Resolution:</strong> <span id="video-resolution"></span></p>
         <p><strong>Is Use:</strong> <span id="video-is-use"></span></p>
@@ -159,6 +179,41 @@
         >
           Save
         </button>
+      </div> -->
+      <div id="video-metadata" class="mt-4 grid-container">
+        <!-- 第一欄 -->
+        
+        <div class="grid-item-left">
+          <h2 id="video-id" class="text-2xl font-bold mb-2"></h2>
+          <p><strong>Resolution:</strong> <span id="video-resolution"></span></p>
+          <p><strong>Is Use:</strong> <span id="video-is-use"></span></p>
+          <p><strong>FPS:</strong> <span id="video-fps"></span></p>
+          <p><strong>Aesthetic Score:</strong> <span id="video-aes"></span></p>
+          <p><strong>Source Video:</strong> <span id="video-source-video"></span></p>
+          <button
+            id="toggle-is-use"
+            class="mt-2 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Toggle Is Use
+          </button>
+        </div>
+      
+        <!-- 第二欄 -->
+        <div class="grid-item-right">
+          <p><strong>Caption:</strong></p>
+          <textarea
+            id="video-caption"
+            class="w-full p-2 border rounded"
+            rows="6"
+            style="resize: vertical"
+          ></textarea>
+          <button
+            id="save-caption"
+            class="mt-2 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 float-right"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -170,360 +225,199 @@
     Caption updated successfully!
   </div>
 
-  <script>
-    const resizer = document.getElementById("resizer");
-    const sidebar = document.querySelector(".sidebar");
-    const contentArea = document.getElementById("content-area");
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const videoListEl = document.getElementById("video-list");
+  const contentArea = document.getElementById("content-area");
+  const selectedVideoInfo = document.getElementById("selected-video-info");
+  const noSelection = document.getElementById("no-selection");
+  const videoPlayer = document.getElementById("video-player");
+  const videoSource = document.getElementById("video-source");
+  const prevVideoBtn = document.getElementById("prev-video");
+  const nextVideoBtn = document.getElementById("next-video");
+  const saveCaptionBtn = document.getElementById("save-caption");
+  const toggleIsUseBtn = document.getElementById("toggle-is-use");
+  const notification = document.getElementById("notification");
 
-    resizer.addEventListener("mousedown", function (e) {
-      e.preventDefault();
-      document.addEventListener("mousemove", resizeSidebar);
-      document.addEventListener("mouseup", stopResize);
+  let videoDataList = [];
+  let currentVideoIndex = -1;
+
+  function showNotification(message, isSuccess = true) {
+    notification.textContent = message;
+    notification.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg ${
+      isSuccess ? "bg-green-500" : "bg-red-500"
+    } text-white`;
+    notification.classList.remove("hidden");
+
+    setTimeout(() => {
+      notification.classList.add("hidden");
+    }, 3000);
+  }
+
+  function updateVideoDetails(video) {
+    document.getElementById("video-id").textContent = video.id;
+    document.getElementById("video-resolution").textContent = `${video.width}x${video.height}`;
+    document.getElementById("video-fps").textContent = video.fps;
+    document.getElementById("video-aes").textContent = video.aes;
+    document.getElementById("video-source-video").textContent = video.source_video;
+    document.getElementById("video-caption").value = video.text;
+    document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
+
+    videoSource.src = `/video/${video.id}`;
+    videoPlayer.load();
+
+    noSelection.classList.add("hidden");
+    selectedVideoInfo.classList.remove("hidden");
+    contentArea.scrollTop = 0;
+
+    document.querySelectorAll(".video-item").forEach((item) =>
+      item.classList.remove("selected")
+    );
+    const selectedItem = document.querySelector(`.video-item[data-id="${video.id}"]`);
+    if (selectedItem) {
+      selectedItem.classList.add("selected");
+      selectedItem.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function attachVideoListClickHandlers() {
+    document.querySelectorAll(".video-item").forEach((item, index) => {
+      item.addEventListener("click", () => {
+        currentVideoIndex = index;
+        updateVideoDetails(videoDataList[currentVideoIndex]);
+      });
     });
+  }
 
-    function resizeSidebar(e) {
-      const newWidth = e.clientX;
-      if (newWidth >= 200 && newWidth <= window.innerWidth * 0.5) {
-        sidebar.style.width = newWidth + "px";
-        contentArea.style.marginLeft = newWidth + "px";
-        contentArea.style.width = `calc(100% - ${newWidth}px)`;
-      }
+  prevVideoBtn.addEventListener("click", function () {
+    if (currentVideoIndex > 0) {
+      currentVideoIndex--;
+      updateVideoDetails(videoDataList[currentVideoIndex]);
     }
+  });
 
-    function stopResize() {
-      document.removeEventListener("mousemove", resizeSidebar);
-      document.removeEventListener("mouseup", stopResize);
+  nextVideoBtn.addEventListener("click", function () {
+    if (currentVideoIndex < videoDataList.length - 1) {
+      currentVideoIndex++;
+      updateVideoDetails(videoDataList[currentVideoIndex]);
     }
+  });
 
-    document.addEventListener("DOMContentLoaded", function () {
-      const searchInput = document.getElementById("search-input");
-      const minAesInput = document.getElementById("min-aes-input");
-      const applyAesFilterBtn = document.getElementById("apply-aes-filter");
-      const aesRangeDisplay = document.getElementById("aes-range-display");
-      const videoList = document.getElementById("video-list");
-      const noSelection = document.getElementById("no-selection");
-      const selectedVideoInfo = document.getElementById("selected-video-info");
-      const videoPlayer = document.getElementById("video-player");
-      const videoSource = document.getElementById("video-source");
-      const saveCaptionBtn = document.getElementById("save-caption");
-      const notification = document.getElementById("notification");
+  saveCaptionBtn.addEventListener("click", function () {
+    if (currentVideoIndex < 0) return;
+    const video = videoDataList[currentVideoIndex];
+    const updatedText = document.getElementById("video-caption").value;
 
-      let currentMinAes = null;
-
-      function showNotification(message, isSuccess = true) {
-        notification.textContent = message;
-        notification.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg ${
-          isSuccess ? "bg-green-500" : "bg-red-500"
-        } text-white`;
-        notification.classList.remove("hidden");
-
-        setTimeout(() => {
-          notification.classList.add("hidden");
-        }, 3000);
-      }
-
-      videoList.addEventListener("click", function (e) {
-        const videoItem = e.target.closest(".video-item");
-        if (videoItem) {
-          // 移除其他項目的 selected 類名
-          document.querySelectorAll(".video-item").forEach((item) => {
-            item.classList.remove("selected");
-          });
-
-          // 為當前選中的項目添加 selected 類名
-          videoItem.classList.add("selected");
-
-          const videoPath = videoItem.dataset.path;
-          const videoId = videoItem.dataset.id;
-          const video = {{ videos | tojson }}.find((v) => v.id === videoId);
-
-          noSelection.classList.add("hidden");
-          selectedVideoInfo.classList.remove("hidden");
-          contentArea.scrollTop = 0;
-          videoPlayer.poster = "";
-          videoSource.src = `/video/${videoId}`;
-          videoPlayer.load();
-
-          document.getElementById("video-id").textContent = video.id;
-          document.getElementById("video-resolution").textContent = `${video.width}x${video.height}`;
-          document.getElementById("video-fps").textContent = video.fps;
-          document.getElementById("video-aes").textContent = video.aes;
-          document.getElementById("video-source-video").textContent = video.source_video; // 更新來源影片名稱
-          document.getElementById("video-caption").value = video.text;
-          document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
+    fetch(`/update_caption`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: video.id, text: updatedText }),
+    })
+      .then((response) => {
+        if (response.ok) {
+          video.text = updatedText; // 即時更新本地資料
+          showNotification("Caption updated successfully!");
+        } else {
+          showNotification("Failed to update caption.", false);
         }
+      })
+      .catch(() => {
+        showNotification("Error while saving caption.", false);
       });
+  });
 
-      function filterVideos() {
-        const query = searchInput.value;
-        const minAes = currentMinAes;
+  toggleIsUseBtn.addEventListener("click", function () {
+    if (currentVideoIndex < 0) return;
+    const video = videoDataList[currentVideoIndex];
+    const updatedIsUse = !video.is_use;
 
-        fetch(`/filter_videos?query=${query}&min_aes=${minAes || ""}`)
-          .then((response) => response.json())
-          .then((videos) => {
-            videoList.innerHTML = videos
-              .map(
-                (video) => `
-              <div class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b"
-                   data-path="${video.web_path}" data-id="${video.id}">
-                  <p class="font-bold">${video.id}</p>
-                  <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
-                  <p class="text-sm text-gray-500">Source Video: ${video.source_video}</p>
-                  <p class="text-sm text-gray-500">Is Use: ${video.is_use ? "Yes" : "No"}</p>
-              </div>`
-              )
-              .join("");
-
-            if (minAes) {
-              aesRangeDisplay.textContent = `Current AES Range: \u2265 ${minAes}`;
-            } else {
-              aesRangeDisplay.textContent = "Current AES Range: All";
-            }
-          });
-      }
-
-    //   applyAesFilterBtn.addEventListener("click", function () {
-    //     currentMinAes = minAesInput.value
-    //       ? parseFloat(minAesInput.value)
-    //       : null;
-    //     filterVideos();
-    //   });
-
-      searchInput.addEventListener("input", filterVideos);
-
-      saveCaptionBtn.addEventListener("click", function () {
-        const videoId = document.getElementById("video-id").textContent;
-        const updatedText = document.getElementById("video-caption").value;
-
-        fetch(`/update_caption`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: videoId, text: updatedText }),
-        })
-          .then((response) => {
-            if (response.ok) {
-              // 顯示成功通知
-              showNotification("Caption updated successfully!");
-
-              // 更新右側 Caption textarea 的值
-              document.getElementById("video-caption").value = updatedText;
-            } else {
-              showNotification("Failed to update caption.", false);
-            }
-          })
-          .catch((error) => {
-            console.error("Fetch error:", error);
-            showNotification("An error occurred while updating caption.", false);
-          });
-      });
-
-      const prevVideoBtn = document.getElementById("prev-video");
-      const nextVideoBtn = document.getElementById("next-video");
-
-      let currentVideoIndex = 0;
-
-      // 更新影片詳細資訊並同步選中的影片項目
-      function updateVideoDetails(video) {
-        document.getElementById("video-id").textContent = video.id;
-        document.getElementById("video-resolution").textContent = `${video.width}x${video.height}`;
-        document.getElementById("video-fps").textContent = video.fps;
-        document.getElementById("video-aes").textContent = video.aes;
-        document.getElementById("video-source-video").textContent = video.source_video;
-        document.getElementById("video-caption").value = video.text;
-        document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
-
-        const videoPlayer = document.getElementById("video-player");
-        const videoSource = document.getElementById("video-source");
-        videoSource.src = `/video/${video.id}`;
-        videoPlayer.load();
-
-        // 更新 sidebar 中的選中項目
-        document.querySelectorAll(".video-item").forEach((item) => {
-          item.classList.remove("selected");
-        });
-        const selectedItem = document.querySelector(`.video-item[data-id="${video.id}"]`);
-        if (selectedItem) {
-          selectedItem.classList.add("selected");
-          selectedItem.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }
-
-      // 切換到上一個影片
-      prevVideoBtn.addEventListener("click", function () {
-        if (currentVideoIndex > 0) {
-          currentVideoIndex--;
-          const video = {{ videos | tojson }}[currentVideoIndex];
+    fetch(`/update_is_use`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: video.id, is_use: updatedIsUse }),
+    })
+      .then((response) => {
+        if (response.ok) {
+          video.is_use = updatedIsUse;
           updateVideoDetails(video);
+          showNotification("Is Use updated!");
+        } else {
+          showNotification("Failed to update Is Use.", false);
         }
+      })
+      .catch(() => {
+        showNotification("Error while updating Is Use.", false);
       });
+  });
 
-      // 切換到下一個影片
-      nextVideoBtn.addEventListener("click", function () {
-        if (currentVideoIndex < {{ videos | tojson }}.length - 1) {
-          currentVideoIndex++;
-          const video = {{ videos | tojson }}[currentVideoIndex];
-          updateVideoDetails(video);
-        }
-      });
-
-      // 點擊影片列表時更新當前影片索引
-      videoList.addEventListener("click", function (e) {
-        const videoItem = e.target.closest(".video-item");
-        if (videoItem) {
-          const videoId = videoItem.dataset.id;
-
-          // 移除所有 .selected 樣式
-          document.querySelectorAll(".video-item").forEach((item) => {
-            item.classList.remove("selected");
-          });
-          videoItem.classList.add("selected");
-
-          // 動態取得影片資料
-          fetch(`/get_video/${videoId}`)
-            .then((response) => response.json())
-            .then((video) => {
-              // 顯示影片資訊區塊
-              document.getElementById("no-selection").classList.add("hidden");
-              document.getElementById("selected-video-info").classList.remove("hidden");
-              contentArea.scrollTop = 0;
-
-              document.getElementById("video-id").textContent = video.id;
-              document.getElementById("video-resolution").textContent = `${video.width}x${video.height}`;
-              document.getElementById("video-fps").textContent = video.fps;
-              document.getElementById("video-aes").textContent = video.aes;
-              document.getElementById("video-source-video").textContent = video.source_video;
-              document.getElementById("video-caption").value = video.text;
-              document.getElementById("video-is-use").textContent = video.is_use ? "Yes" : "No";
-
-              const videoSource = document.getElementById("video-source");
-              videoSource.src = `/video/${video.id}`;
-              document.getElementById("video-player").load();
-            });
-        }
-      });
-
-
-      const toggleIsUseBtn = document.getElementById("toggle-is-use");
-
-      toggleIsUseBtn.addEventListener("click", function () {
-        const videoId = document.getElementById("video-id").textContent;
-        const currentIsUse = document.getElementById("video-is-use").textContent === "Yes";
-
-        fetch(`/update_is_use`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: videoId, is_use: !currentIsUse }),
-        })
-          .then((response) => {
-            if (response.ok) {
-              // 更新右側詳細資訊
-              document.getElementById("video-is-use").textContent = !currentIsUse ? "Yes" : "No";
-
-              // 更新 Sidebar 中的對應項目
-              const sidebarItem = document.querySelector(`.video-item[data-id="${videoId}"]`);
-              if (sidebarItem) {
-                const isUseElement = sidebarItem.querySelector(".text-gray-500:last-child");
-                if (isUseElement) {
-                  isUseElement.textContent = `Is Use: ${!currentIsUse ? "Yes" : "No"}`;
-                }
-              }
-
-              showNotification("is_use updated successfully!");
-            } else {
-              showNotification("Failed to update is_use.", false);
-            }
-          })
-          .catch(() => {
-            showNotification("An error occurred while updating is_use.", false);
-          });
-      });
-    });
-
-    document.addEventListener("DOMContentLoaded", function () {
-      const searchInput = document.getElementById("search-input");
-      const videoList = document.getElementById("video-list");
-
-      // 篩選影片的函數
-      function filterVideos() {
-        const query = searchInput.value.toLowerCase();
-
-        // 遍歷影片列表，根據搜尋條件顯示或隱藏影片
-        document.querySelectorAll(".video-item").forEach((item) => {
-          const videoId = item.dataset.id.toLowerCase();
-          const sourceVideo = item.querySelector(".text-gray-500").textContent.toLowerCase();
-          if (videoId.includes(query) || sourceVideo.includes(query)) {
-            item.style.display = ""; // 顯示符合條件的影片
-          } else {
-            item.style.display = "none"; // 隱藏不符合條件的影片
-          }
-        });
-      }
-
-      // 綁定輸入事件到搜尋框
-      searchInput.addEventListener("input", filterVideos);
-    });
-
-    const fileSelector = document.getElementById("file-selector");
-    const videoList = document.getElementById("video-list");
-
-    // 載入檔案清單
-    function loadFileList() {
-      fetch('/get_files')
-        .then((response) => response.json())
-        .then((files) => {
-          fileSelector.innerHTML = '<option value="">-- Select a file --</option>';
-          files.forEach((file) => {
-            const option = document.createElement("option");
-            option.value = file;
-            option.textContent = file;
-            fileSelector.appendChild(option);
-          });
-
-          // 如果有檔案，預設選擇第一個檔案並載入
-          if (files.length > 0) {
-            fileSelector.value = files[0]; // 預設選擇第一個檔案
-            loadFileData(files[0]); // 載入第一個檔案的資料
-          }
-        });
+  // 鍵盤快捷鍵
+  document.addEventListener("keydown", function (event) {
+    if (event.ctrlKey && event.shiftKey && event.key === "S") {
+      event.preventDefault();
+      saveCaptionBtn.click();
+    } else if (event.altKey && event.key === ",") {
+      prevVideoBtn.click();
+    } else if (event.altKey && event.key === ".") {
+      nextVideoBtn.click();
     }
+  });
 
-    // 載入檔案資料
-    function loadFileData(selectedFile) {
-      fetch(`/load_file?filename=${encodeURIComponent(selectedFile)}`)
-        .then((response) => response.json())
-        .then((videos) => {
-          // 更新影片列表
-          videoList.innerHTML = videos
-            .map(
-              (video) => `
-              <div class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b"
-                   data-path="${video.web_path}" data-id="${video.id}">
-                  <p class="font-bold">${video.id}</p>
-                  <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
-                  <p class="text-sm text-gray-500">Source Video: ${video.source_video}</p>
-                  <p class="text-sm text-gray-500">Is Use: ${video.is_use ? "Yes" : "No"}</p>
-              </div>`
-            )
-            .join("");
+  // 檔案選擇與初始化
+  const fileSelector = document.getElementById("file-selector");
+  function loadFileList() {
+    fetch('/get_files')
+      .then((response) => response.json())
+      .then((files) => {
+        fileSelector.innerHTML = '<option value="">-- Select a file --</option>';
+        files.forEach((file) => {
+          const option = document.createElement("option");
+          option.value = file;
+          option.textContent = file;
+          fileSelector.appendChild(option);
         });
+
+        if (files.length > 0) {
+          fileSelector.value = files[0];
+          loadFileData(files[0]);
+        }
+      });
+  }
+
+  function loadFileData(selectedFile) {
+    fetch(`/load_file?filename=${encodeURIComponent(selectedFile)}`)
+      .then((response) => response.json())
+      .then((videos) => {
+        videoDataList = videos;
+        currentVideoIndex = -1;
+
+        const videoListHTML = videos.map((video) => `
+          <div class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b" data-id="${video.id}">
+            <p class="font-bold">${video.id}</p>
+            <p class="text-sm text-gray-600">Aesthetic Score: ${video.aes}</p>
+            <p class="text-sm text-gray-500">Source Video: ${video.source_video}</p>
+            <p class="text-sm text-gray-500">Is Use: ${video.is_use ? "Yes" : "No"}</p>
+          </div>`).join("");
+
+        videoListEl.innerHTML = videoListHTML;
+        attachVideoListClickHandlers();
+      });
+  }
+
+  fileSelector.addEventListener("change", function () {
+    const selectedFile = fileSelector.value;
+    if (selectedFile) {
+      loadFileData(selectedFile);
+    } else {
+      videoListEl.innerHTML = "";
+      videoDataList = [];
+      currentVideoIndex = -1;
     }
+  });
 
-    // 當選擇檔案時載入對應的資料
-    fileSelector.addEventListener("change", function () {
-      const selectedFile = fileSelector.value;
-      if (selectedFile) {
-        loadFileData(selectedFile);
-      } else {
-        videoList.innerHTML = ""; // 清空影片列表
-      }
-    });
+  loadFileList();
+});
+</script>
 
-    // 初次載入檔案清單
-    document.addEventListener("DOMContentLoaded", loadFileList);
-  </script>
+  
 </body>
 </html>
