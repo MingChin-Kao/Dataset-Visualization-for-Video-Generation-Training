@@ -228,7 +228,6 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const videoListEl = document.getElementById("video-list");
-  const contentArea = document.getElementById("content-area");
   const selectedVideoInfo = document.getElementById("selected-video-info");
   const noSelection = document.getElementById("no-selection");
   const videoPlayer = document.getElementById("video-player");
@@ -239,8 +238,34 @@ document.addEventListener("DOMContentLoaded", function () {
   const toggleIsUseBtn = document.getElementById("toggle-is-use");
   const notification = document.getElementById("notification");
 
+  const resizer = document.getElementById("resizer");
+  const sidebar = document.querySelector(".sidebar");
+  const contentArea = document.querySelector(".content-area");
+
   let videoDataList = [];
   let currentVideoIndex = -1;
+
+  // Resizer sidebar
+  resizer.addEventListener("mousedown", function (e) {
+    e.preventDefault();
+    document.addEventListener("mousemove", resizeSidebar);
+    document.addEventListener("mouseup", stopResizing);
+  });
+
+  function resizeSidebar(e) {
+    const newWidth = e.clientX;
+    if (newWidth >= 200 && newWidth <= window.innerWidth * 0.5) { // 限制寬度範圍
+      sidebar.style.width = `${newWidth}px`;
+      contentArea.style.marginLeft = `${newWidth}px`;
+      contentArea.style.width = `calc(100% - ${newWidth}px)`;
+    }
+  }
+
+  function stopResizing() {
+    document.removeEventListener("mousemove", resizeSidebar);
+    document.removeEventListener("mouseup", stopResizing);
+  }
+
 
   function showNotification(message, isSuccess = true) {
     notification.textContent = message;
