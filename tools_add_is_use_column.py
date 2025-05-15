@@ -1,7 +1,7 @@
 import pandas as pd
 
 # 定義檔案路徑
-clips_filter_path = "./data/clips_2.csv"
+clips_filter_path = "./data/clips.csv"
 # clips_path = "data/clips.csv"
 
 # 新增 is_use 欄位並儲存

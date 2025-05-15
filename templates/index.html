@@ -228,6 +228,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const videoListEl = document.getElementById("video-list");
+  const searchInput = document.getElementById("search-input");
   const selectedVideoInfo = document.getElementById("selected-video-info");
   const noSelection = document.getElementById("no-selection");
   const videoPlayer = document.getElementById("video-player");
@@ -244,6 +245,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let videoDataList = [];
   let currentVideoIndex = -1;
+
+  function filterVideos() {
+        const query = searchInput.value.toLowerCase();
+
+        // 遍歷影片列表，根據搜尋條件顯示或隱藏影片
+        document.querySelectorAll(".video-item").forEach((item) => {
+          const videoId = item.dataset.id.toLowerCase();
+          const sourceVideo = item.querySelector(".text-gray-500").textContent.toLowerCase();
+          if (videoId.includes(query) || sourceVideo.includes(query)) {
+            item.style.display = ""; // 顯示符合條件的影片
+          } else {
+            item.style.display = "none"; // 隱藏不符合條件的影片
+          }
+        });
+      }
+
+  // 綁定輸入事件到搜尋框
+  searchInput.addEventListener("input", filterVideos);
 
   // Resizer sidebar
   resizer.addEventListener("mousedown", function (e) {
@@ -414,7 +433,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((videos) => {
         videoDataList = videos;
         currentVideoIndex = -1;
-
+        console.log("== update sidebar ===")
         const videoListHTML = videos.map((video) => `
           <div class="video-item cursor-pointer p-2 hover:bg-gray-100 border-b" data-id="${video.id}">
             <p class="font-bold">${video.id}</p>
