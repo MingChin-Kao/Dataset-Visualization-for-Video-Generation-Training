@@ -16,3 +16,13 @@ docker compose up -d
 ### Access the Application
 Once the container is running, open your browser and navigate to: http://localhost:5000.
 You should see the application interface.
+
+
+### Extract latest cpation
+```
+python extract_latest_records.py [CSV file]
+
+# e.g
+python extract_latest_records.py ../data/clips.csv
+
+```

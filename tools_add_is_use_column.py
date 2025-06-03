@@ -9,6 +9,8 @@ def add_is_use_column(file_path):
     df = pd.read_csv(file_path)
     df['is_use'] = True  # 預設值為 False
     df['aes'] = 0
+    df['modifiedTime'] = None
+    df['selectedUser'] = None
     df.to_csv(file_path, index=False)
     print(f"Added 'is_use' column to {file_path}")
 

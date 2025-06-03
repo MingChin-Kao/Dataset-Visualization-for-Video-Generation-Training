@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Selection</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="flex items-center justify-center h-screen bg-gray-100">
+  <div class="bg-white p-8 rounded shadow-md w-96">
+    <h1 class="text-2xl font-bold mb-4 text-center">Select User</h1>
+    <select id="user-selector" class="w-full p-2 border rounded mb-4">
+      <option value="">-- Select a user --</option>
+      <option value="mingchin">MingChin</option>
+      <option value="cw">許家維</option>
+      <option value="rachel">Rachel</option>
+      <option value="shanu">鄭先喻</option>
+      <option value="leah">李雅婷</option>
+      <option value="ardiana">ARDIANA</option>
+    </select>
+    <button id="confirm-btn" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Confirm</button>
+  </div>
+
+  <script>
+    document.getElementById('confirm-btn').addEventListener('click', function () {
+      const selectedUser = document.getElementById('user-selector').value;
+      if (selectedUser) {
+        localStorage.setItem('selectedUser', selectedUser);
+        window.location.href = '/home';
+      } else {
+        alert('Please select a user.');
+      }
+    });
+  </script>
+</body>
+</html>

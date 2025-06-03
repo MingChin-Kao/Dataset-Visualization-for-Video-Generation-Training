@@ -70,11 +70,19 @@
 <body class="independent-scroll">
   <div class="sidebar-container">
     <div class="sidebar">
-        <div class="mb-4">
-        <label for="file-selector" class="block text-sm font-medium text-gray-700">Select File:</label>
-        <select id="file-selector" class="w-full p-2 border rounded">
-            <option value="">-- Select a file --</option>
-        </select>
+        <div class="p-4 bg-gray-200 flex justify-between items-center">
+          <div>
+            <span id="current-user" class="text-lg font-bold text-gray-700"></span>
+          </div>
+          <div>
+            <a href="/" class="text-blue-500 hover:underline">Change User</a>
+          </div>
+        </div>
+        <div class="mb-4 mt-4">
+          <label for="file-selector" class="block text-sm font-medium text-gray-700">Select File:</label>
+          <select id="file-selector" class="w-full p-2 border rounded">
+              <option value="">-- Select a file --</option>
+          </select>
         </div>
       <input
         type="text"
@@ -227,6 +235,17 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+  
+  const selectedUser = localStorage.getItem("selectedUser");
+  const currentUserEl = document.getElementById("current-user");
+
+  if (selectedUser) {
+      console.log("== selectedUser ===", selectedUser);
+      currentUserEl.textContent = `Current User: ${selectedUser}`;
+    } else {
+      window.location.href = "/";
+    }
+  
   const videoListEl = document.getElementById("video-list");
   const searchInput = document.getElementById("search-input");
   const selectedVideoInfo = document.getElementById("selected-video-info");
@@ -238,7 +257,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const saveCaptionBtn = document.getElementById("save-caption");
   const toggleIsUseBtn = document.getElementById("toggle-is-use");
   const notification = document.getElementById("notification");
-
   const resizer = document.getElementById("resizer");
   const sidebar = document.querySelector(".sidebar");
   const contentArea = document.querySelector(".content-area");
@@ -347,26 +365,49 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  // saveCaptionBtn.addEventListener("click", function () {
+  //   if (currentVideoIndex < 0) return;
+  //   const video = videoDataList[currentVideoIndex];
+  //   const updatedText = document.getElementById("video-caption").value;
+
+  //   fetch(`/update_caption`, {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ id: video.id, text: updatedText }),
+  //   })
+  //     .then((response) => {
+  //       if (response.ok) {
+  //         video.text = updatedText; // 即時更新本地資料
+  //         showNotification("Caption updated successfully!");
+  //       } else {
+  //         showNotification("Failed to update caption.", false);
+  //       }
+  //     })
+  //     .catch(() => {
+  //       showNotification("Error while saving caption.", false);
+  //     });
+  // });
   saveCaptionBtn.addEventListener("click", function () {
     if (currentVideoIndex < 0) return;
     const video = videoDataList[currentVideoIndex];
     const updatedText = document.getElementById("video-caption").value;
+    const selectedUser = localStorage.getItem("selectedUser"); // 從 localStorage 取得 selectedUser
 
     fetch(`/update_caption`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: video.id, text: updatedText }),
+      body: JSON.stringify({ id: video.id, text: updatedText, selectedUser: selectedUser }),
     })
       .then((response) => {
         if (response.ok) {
           video.text = updatedText; // 即時更新本地資料
-          showNotification("Caption updated successfully!");
+          showNotification("Caption appended successfully!");
         } else {
-          showNotification("Failed to update caption.", false);
+          showNotification("Failed to append caption.", false);
         }
       })
       .catch(() => {
-        showNotification("Error while saving caption.", false);
+        showNotification("Error while appending caption.", false);
       });
   });
 
