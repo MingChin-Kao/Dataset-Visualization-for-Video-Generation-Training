@@ -15,6 +15,10 @@ DATA_DIR = '/app/data'
 # 全域變數儲存當前選擇的檔案名稱
 current_csv_file = 'clips.csv'
 
+def extract_scene_num(id_str):
+    match = re.search(r'_scene-?(\d+)', id_str)
+    return int(match.group(1)) if match else -1
+
 # Load the CSV file
 def load_video_data(current_csv_file):
     filepath = os.path.join(DATA_DIR, current_csv_file)
@@ -48,8 +52,18 @@ def load_video_data(current_csv_file):
     base_clip_path = '/app/data'
     df['web_path'] = df['path'].fillna('').apply(lambda x: x.replace(base_clip_path + '/', ''))
     df['source_video'] = df['id'].apply(lambda x: x.split('_scene')[0])
-    df['aes'] = df['aes'].apply(lambda x: round(x, 2))
+    # df['aes'] = df['aes'].apply(lambda x: round(x, 2))
 
+    # 其他處理邏輯
+    df['modifiedTime'] = pd.to_datetime(df['modifiedTime'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S').fillna('')
+    df['selectedUser'] = df['selectedUser'].fillna('')
+
+    # 新增 scene_num 欄位
+    df['scene_num'] = df['id'].apply(extract_scene_num)
+
+    # 你可以在回傳前排序
+    df = df.sort_values(by=['source_video', 'scene_num'])
+    print(f"=== Sort Clipe by scen_num {df.head(5)} ===")  # 除錯訊息
     return df
 
 def get_video_by_id(video_id):
@@ -166,7 +180,8 @@ def update_caption():
 
         # 儲存回 CSV 檔案
         df.to_csv(filepath, index=False)
-        return "Caption appended successfully", 200
+        # 回傳新的一筆資料
+        return jsonify(new_row), 200
     else:
         return "Video ID not found", 404
 
