@@ -7,7 +7,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - /home/kao/syn_workspace/tabular_data/Open-Sora/data_pipeline/clips:/app/clips
+      - /mnt/hdd/video_generation/ui_clips:/app/clips
       - ./data:/app/data
       - .:/app
     environment:
