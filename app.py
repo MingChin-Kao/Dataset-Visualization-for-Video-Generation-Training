@@ -19,6 +19,10 @@ def extract_scene_num(id_str):
     match = re.search(r'_scene-?(\d+)', id_str)
     return int(match.group(1)) if match else -1
 
+def extract_scene_num(id_str):
+    match = re.search(r'_scene-?(\d+)', id_str)
+    return int(match.group(1)) if match else -1
+
 # Load the CSV file
 def load_video_data(current_csv_file):
     filepath = os.path.join(DATA_DIR, current_csv_file)
@@ -129,7 +133,7 @@ def serve_video(filename):
 
 # @app.route('/update_caption', methods=['POST'])
 # def update_caption():
-#     current_csv_file = session.get('current_csv_file', 'stage_one.csv')
+#     current_csv_file = session.get('current_csv_file', 'clips.csv')
 #     data = request.get_json()
 #     video_id = data.get('id')
 #     updated_text = data.get('text')
